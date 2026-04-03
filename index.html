@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Générateur de CV</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Source+Sans+3:wght@300;400;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy: #1a2744;
+    --navy-light: #2d3f6b;
+    --gold: #b8975a;
+    --gold-light: #d4b07a;
+    --gray: #6b7280;
+    --light: #f8f7f4;
+    --white: #ffffff;
+    --border: #ddd8cc;
+    --text: #2c2c2c;
+  }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    background: #edeae3;
+    min-height: 100vh;
+    color: var(--text);
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--navy);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 58px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18);
+  }
+  .topbar-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.2rem;
+    color: var(--gold);
+    letter-spacing: 0.03em;
+  }
+  .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+  .lang-toggle {
+    display: flex;
+    border: 1px solid rgba(184,151,90,0.4);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .lang-btn {
+    padding: 5px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    background: transparent;
+    color: rgba(255,255,255,0.5);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Source Sans 3', sans-serif;
+    letter-spacing: 0.05em;
+  }
+  .lang-btn.active { background: var(--gold); color: var(--navy); }
+
+  .btn {
+    padding: 7px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    font-family: 'Source Sans 3', sans-serif;
+    transition: all 0.18s;
+    letter-spacing: 0.02em;
+  }
+  .btn-outline {
+    background: transparent;
+    border: 1px solid rgba(184,151,90,0.5);
+    color: var(--gold);
+  }
+  .btn-outline:hover { background: rgba(184,151,90,0.1); }
+  .btn-primary { background: var(--gold); color: var(--navy); }
+  .btn-primary:hover { background: var(--gold-light); }
+
+  /* ── LAYOUT ── */
+  .app { display: grid; grid-template-columns: 380px 1fr; min-height: calc(100vh - 58px); }
+
+  /* ── FORM PANEL ── */
+  .form-panel {
+    background: var(--white);
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    height: calc(100vh - 58px);
+    position: sticky;
+    top: 58px;
+  }
+
+  .form-section {
+    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1.5rem;
+  }
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1rem;
+    cursor: pointer;
+    user-select: none;
+  }
+  .section-icon {
+    width: 28px; height: 28px;
+    background: var(--navy);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .section-icon svg { width: 14px; height: 14px; stroke: var(--gold); fill: none; stroke-width: 2; }
+  .section-label {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--navy);
+    flex: 1;
+  }
+  .chevron { transition: transform 0.2s; color: var(--gray); font-size: 14px; }
+  .collapsed .chevron { transform: rotate(-90deg); }
+  .section-body { display: flex; flex-direction: column; gap: 10px; }
+  .section-body.hidden { display: none; }
+
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 11px; font-weight: 600; color: var(--gray); text-transform: uppercase; letter-spacing: 0.06em; }
+  .field input, .field textarea, .field select {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: 'Source Sans 3', sans-serif;
+    color: var(--text);
+    background: var(--light);
+    transition: border-color 0.15s;
+    width: 100%;
+  }
+  .field input:focus, .field textarea:focus {
+    outline: none;
+    border-color: var(--navy-light);
+    background: var(--white);
+  }
+  .field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  .add-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px;
+    border: 1px dashed var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--navy-light);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: 'Source Sans 3', sans-serif;
+    transition: all 0.15s;
+    letter-spacing: 0.03em;
+  }
+  .add-btn:hover { border-color: var(--navy); background: var(--light); }
+
+  .entry-block {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    background: var(--light);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    position: relative;
+  }
+  .entry-block .remove-btn {
+    position: absolute; top: 6px; right: 8px;
+    background: none; border: none; cursor: pointer;
+    color: #ccc; font-size: 16px; line-height: 1;
+    transition: color 0.15s;
+  }
+  .entry-block .remove-btn:hover { color: #e24b4a; }
+
+  /* skill row */
+  .skill-row { display: flex; gap: 6px; align-items: center; }
+  .skill-row input { flex: 1; }
+  .skill-row select { width: 90px; }
+
+  /* ── PREVIEW PANEL ── */
+  .preview-panel {
+    padding: 2rem;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: #ddd9d0;
+  }
+
+  /* ── CV DOCUMENT ── */
+  #cv-document {
+    width: 210mm;
+    min-height: 297mm;
+    background: var(--white);
+    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cv-header {
+    background: var(--navy);
+    padding: 2.2rem 2.5rem 1.8rem;
+    color: white;
+    display: flex;
+    gap: 1.5rem;
+    align-items: flex-start;
+  }
+  .cv-avatar {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: var(--gold);
+    border: 3px solid rgba(255,255,255,0.2);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    color: var(--navy);
+    flex-shrink: 0;
+  }
+  .cv-header-info { flex: 1; }
+  .cv-name {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.9rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1.15;
+    color: white;
+  }
+  .cv-title {
+    font-size: 0.95rem;
+    color: var(--gold);
+    font-weight: 300;
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+  .cv-contacts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    margin-top: 14px;
+  }
+  .cv-contact-item {
+    font-size: 0.78rem;
+    color: rgba(255,255,255,0.75);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .cv-contact-item span { color: var(--gold); }
+
+  .cv-body {
+    display: grid;
+    grid-template-columns: 1fr 2.2fr;
+    flex: 1;
+  }
+
+  .cv-sidebar {
+    background: #f5f3ef;
+    padding: 1.5rem 1.2rem;
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+  }
+
+  .cv-main {
+    padding: 1.5rem 1.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.4rem;
+  }
+
+  .cv-section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 0.88rem;
+    color: var(--navy);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    padding-bottom: 5px;
+    border-bottom: 2px solid var(--gold);
+    margin-bottom: 10px;
+  }
+
+  .cv-summary {
+    font-size: 0.82rem;
+    color: var(--gray);
+    line-height: 1.65;
+  }
+
+  .cv-entry { margin-bottom: 10px; }
+  .cv-entry-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .cv-entry-title { font-size: 0.88rem; font-weight: 600; color: var(--navy); }
+  .cv-entry-date { font-size: 0.75rem; color: var(--gold); font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+  .cv-entry-sub { font-size: 0.8rem; color: var(--gray); font-style: italic; margin-top: 1px; }
+  .cv-entry-desc { font-size: 0.79rem; color: #555; line-height: 1.55; margin-top: 4px; }
+
+  .cv-skill-item { margin-bottom: 7px; }
+  .cv-skill-name { font-size: 0.8rem; color: var(--text); margin-bottom: 3px; font-weight: 600; }
+  .cv-skill-bar { height: 4px; background: #e0ddd6; border-radius: 2px; }
+  .cv-skill-fill { height: 100%; background: var(--gold); border-radius: 2px; transition: width 0.4s; }
+
+  .cv-lang-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    margin-bottom: 5px;
+  }
+  .cv-lang-name { color: var(--text); font-weight: 600; }
+  .cv-lang-level { color: var(--gold); font-size: 0.73rem; font-weight: 600; letter-spacing: 0.04em; }
+
+  .cv-interest-list {
+    display: flex; flex-wrap: wrap; gap: 5px;
+  }
+  .cv-interest-tag {
+    font-size: 0.73rem;
+    padding: 3px 9px;
+    border-radius: 20px;
+    background: var(--navy);
+    color: rgba(255,255,255,0.8);
+    font-weight: 400;
+  }
+
+  .empty-hint {
+    font-size: 0.75rem;
+    color: #bbb;
+    font-style: italic;
+  }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .form-panel { position: static; height: auto; }
+    #cv-document { width: 100%; }
+  }
+
+  @media print {
+    .topbar, .form-panel { display: none !important; }
+    .preview-panel { padding: 0; background: white; }
+    #cv-document { box-shadow: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title">CV Generator</div>
+  <div class="topbar-actions">
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('fr')">FR</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+    </div>
+    <button class="btn btn-outline" onclick="resetForm()">↺ Reset</button>
+    <button class="btn btn-primary" onclick="downloadPDF()">⬇ Télécharger PDF</button>
+  </div>
+</div>
+
+<div class="app">
+  <!-- FORM PANEL -->
+  <div class="form-panel">
+
+    <!-- PERSONAL INFO -->
+    <div class="form-section">
+      <div class="section-head" onclick="toggleSection(this)">
+        <div class="section-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg></div>
+        <span class="section-label" data-fr="Informations personnelles" data-en="Personal Info">Informations personnelles</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="field-row">
+          <div class="field"><label data-fr="Prénom" data-en="First Name">Prénom</label><input id="f-firstname" placeholder="Youssef" oninput="updateCV()"/></div>
+          <div class="field"><label data-fr="Nom" data-en="Last Name">Nom</label><input id="f-lastname" placeholder="Benali" oninput="updateCV()"/></div>
+        </div>
+        <div class="field"><label data-fr="Titre du poste" data-en="Job Title">Titre du poste</label><input id="f-title" placeholder="Développeur Full Stack" oninput="updateCV()"/></div>
+        <div class="field"><label data-fr="Email" data-en="Email">Email</label><input id="f-email" placeholder="youssef@email.com" oninput="updateCV()"/></div>
+        <div class="field-row">
+          <div class="field"><label data-fr="Téléphone" data-en="Phone">Téléphone</label><input id="f-phone" placeholder="+212 6XX XXX XXX" oninput="updateCV()"/></div>
+          <div class="field"><label data-fr="Ville" data-en="City">Ville</label><input id="f-city" placeholder="Agadir" oninput="updateCV()"/></div>
+        </div>
+        <div class="field"><label data-fr="LinkedIn / Portfolio" data-en="LinkedIn / Portfolio">LinkedIn / Portfolio</label><input id="f-link" placeholder="linkedin.com/in/youssef" oninput="updateCV()"/></div>
+        <div class="field"><label data-fr="Profil / Résumé" data-en="Profile / Summary">Profil / Résumé</label><textarea id="f-summary" placeholder="Développeur passionné avec 3 ans d'expérience..." oninput="updateCV()"></textarea></div>
+      </div>
+    </div>
+
+    <!-- EXPERIENCE -->
+    <div class="form-section">
+      <div class="section-head" onclick="toggleSection(this)">
+        <div class="section-icon"><svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg></div>
+        <span class="section-label" data-fr="Expériences" data-en="Experience">Expériences</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div id="exp-list"></div>
+        <button class="add-btn" onclick="addEntry('exp')">＋ <span data-fr="Ajouter une expérience" data-en="Add experience">Ajouter une expérience</span></button>
+      </div>
+    </div>
+
+    <!-- EDUCATION -->
+    <div class="form-section">
+      <div class="section-head" onclick="toggleSection(this)">
+        <div class="section-icon"><svg viewBox="0 0 24 24"><path d="M22 10v6M2 10l10-5 10 5-10 5-10-5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+        <span class="section-label" data-fr="Formation" data-en="Education">Formation</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div id="edu-list"></div>
+        <button class="add-btn" onclick="addEntry('edu')">＋ <span data-fr="Ajouter une formation" data-en="Add education">Ajouter une formation</span></button>
+      </div>
+    </div>
+
+    <!-- SKILLS -->
+    <div class="form-section">
+      <div class="section-head" onclick="toggleSection(this)">
+        <div class="section-icon"><svg viewBox="0 0 24 24"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg></div>
+        <span class="section-label" data-fr="Compétences" data-en="Skills">Compétences</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div id="skill-list"></div>
+        <button class="add-btn" onclick="addSkill()">＋ <span data-fr="Ajouter une compétence" data-en="Add skill">Ajouter une compétence</span></button>
+      </div>
+    </div>
+
+    <!-- LANGUAGES -->
+    <div class="form-section">
+      <div class="section-head" onclick="toggleSection(this)">
+        <div class="section-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg></div>
+        <span class="section-label" data-fr="Langues" data-en="Languages">Langues</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div id="lang-list"></div>
+        <button class="add-btn" onclick="addLang()">＋ <span data-fr="Ajouter une langue" data-en="Add language">Ajouter une langue</span></button>
+      </div>
+    </div>
+
+    <!-- INTERESTS -->
+    <div class="form-section">
+      <div class="section-head" onclick="toggleSection(this)">
+        <div class="section-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+        <span class="section-label" data-fr="Centres d'intérêt" data-en="Interests">Centres d'intérêt</span>
+        <span class="chevron">▾</span>
+      </div>
+      <div class="section-body">
+        <div class="field"><label data-fr="Séparés par des virgules" data-en="Comma separated">Séparés par des virgules</label>
+          <input id="f-interests" placeholder="Football, Lecture, Voyage, Photographie" oninput="updateCV()"/>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- PREVIEW PANEL -->
+  <div class="preview-panel">
+    <div id="cv-document">
+
+      <!-- CV HEADER -->
+      <div class="cv-header">
+        <div class="cv-avatar" id="cv-avatar">YB</div>
+        <div class="cv-header-info">
+          <div class="cv-name" id="cv-name">Youssef Benali</div>
+          <div class="cv-title" id="cv-job-title">Développeur Full Stack</div>
+          <div class="cv-contacts" id="cv-contacts"></div>
+        </div>
+      </div>
+
+      <!-- CV BODY -->
+      <div class="cv-body">
+
+        <!-- SIDEBAR -->
+        <div class="cv-sidebar">
+
+          <!-- Summary -->
+          <div id="cv-summary-section">
+            <div class="cv-section-title" id="lbl-profile">PROFIL</div>
+            <div class="cv-summary" id="cv-summary">Développeur passionné avec 3 ans d'expérience en JavaScript et React. Curieux, rigoureux et orienté résultats.</div>
+          </div>
+
+          <!-- Skills -->
+          <div id="cv-skills-section">
+            <div class="cv-section-title" id="lbl-skills">COMPÉTENCES</div>
+            <div id="cv-skills-list"></div>
+          </div>
+
+          <!-- Languages -->
+          <div id="cv-langs-section">
+            <div class="cv-section-title" id="lbl-langs">LANGUES</div>
+            <div id="cv-langs-list"></div>
+          </div>
+
+          <!-- Interests -->
+          <div id="cv-interests-section" style="display:none;">
+            <div class="cv-section-title" id="lbl-interests">INTÉRÊTS</div>
+            <div class="cv-interest-list" id="cv-interests-list"></div>
+          </div>
+
+        </div>
+
+        <!-- MAIN -->
+        <div class="cv-main">
+
+          <!-- Experience -->
+          <div id="cv-exp-section">
+            <div class="cv-section-title" id="lbl-exp">EXPÉRIENCE</div>
+            <div id="cv-exp-list"></div>
+          </div>
+
+          <!-- Education -->
+          <div id="cv-edu-section">
+            <div class="cv-section-title" id="lbl-edu">FORMATION</div>
+            <div id="cv-edu-list"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let lang = 'fr';
+let expEntries = [];
+let eduEntries = [];
+let skillEntries = [];
+let langEntries = [];
+let expCount = 0, eduCount = 0, skillCount = 0, langCount = 0;
+
+const LABELS = {
+  fr: { profile:'PROFIL', skills:'COMPÉTENCES', langs:'LANGUES', exp:'EXPÉRIENCE', edu:'FORMATION', interests:'INTÉRÊTS',
+        levels:['Débutant','Intermédiaire','Avancé','Expert','Natif'],
+        langLevels:['Notions','A2','B1','B2','C1','C2','Natif/Bilingue'] },
+  en: { profile:'PROFILE', skills:'SKILLS', langs:'LANGUAGES', exp:'EXPERIENCE', edu:'EDUCATION', interests:'INTERESTS',
+        levels:['Beginner','Intermediate','Advanced','Expert','Native'],
+        langLevels:['Basic','A2','B1','B2','C1','C2','Native/Bilingual'] }
+};
+
+// ── LANG ──
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent === l.toUpperCase()));
+  document.querySelectorAll('[data-fr]').forEach(el => { el.textContent = el.getAttribute('data-' + l); });
+  updateCV();
+}
+
+// ── SECTION TOGGLE ──
+function toggleSection(head) {
+  const body = head.nextElementSibling;
+  head.classList.toggle('collapsed');
+  body.classList.toggle('hidden');
+}
+
+// ── ADD ENTRIES ──
+function addEntry(type) {
+  const id = type === 'exp' ? ++expCount : ++eduCount;
+  const list = document.getElementById(type + '-list');
+  const div = document.createElement('div');
+  div.className = 'entry-block';
+  div.id = type + '-entry-' + id;
+  const titlePh = type === 'exp' ? (lang==='fr'?'Développeur Frontend':'Frontend Developer') : (lang==='fr'?'Licence Informatique':'BSc Computer Science');
+  const subPh = type === 'exp' ? (lang==='fr'?'Nom de l\'entreprise':'Company Name') : (lang==='fr'?'Université / École':'University / School');
+  div.innerHTML = `
+    <button class="remove-btn" onclick="removeEntry('${type}', ${id})">×</button>
+    <div class="field"><label>${lang==='fr'?'Intitulé du poste':'Job Title'}</label>
+      <input placeholder="${titlePh}" oninput="updateCV()" data-field="${type}-title-${id}"/></div>
+    <div class="field"><label>${lang==='fr'?(type==='exp'?'Entreprise':'Établissement'):(type==='exp'?'Company':'Institution')}</label>
+      <input placeholder="${subPh}" oninput="updateCV()" data-field="${type}-sub-${id}"/></div>
+    <div class="field-row">
+      <div class="field"><label>${lang==='fr'?'Début':'Start'}</label><input placeholder="2022" oninput="updateCV()" data-field="${type}-start-${id}"/></div>
+      <div class="field"><label>${lang==='fr'?'Fin':'End'}</label><input placeholder="${lang==='fr'?'Présent':'Present'}" oninput="updateCV()" data-field="${type}-end-${id}"/></div>
+    </div>
+    <div class="field"><label>${lang==='fr'?'Description':'Description'}</label>
+      <textarea placeholder="${lang==='fr'?'Décrivez vos missions...':'Describe your responsibilities...'}" oninput="updateCV()" data-field="${type}-desc-${id}"></textarea></div>
+  `;
+  list.appendChild(div);
+  (type==='exp'?expEntries:eduEntries).push(id);
+  updateCV();
+}
+
+function removeEntry(type, id) {
+  document.getElementById(type + '-entry-' + id).remove();
+  const arr = type==='exp'?expEntries:eduEntries;
+  const idx = arr.indexOf(id); if(idx>-1) arr.splice(idx,1);
+  updateCV();
+}
+
+function addSkill() {
+  const id = ++skillCount;
+  const list = document.getElementById('skill-list');
+  const div = document.createElement('div');
+  div.className = 'entry-block skill-row';
+  div.id = 'skill-entry-' + id;
+  const lvls = LABELS[lang].levels;
+  div.innerHTML = `
+    <input placeholder="${lang==='fr'?'JavaScript':'JavaScript'}" oninput="updateCV()" data-field="skill-name-${id}" style="flex:1"/>
+    <select oninput="updateCV()" data-field="skill-level-${id}" style="width:110px">
+      ${lvls.map((l,i)=>`<option value="${(i+1)*20}">${l}</option>`).join('')}
+    </select>
+    <button class="remove-btn" style="position:static;margin-left:2px;" onclick="removeSkill(${id})">×</button>
+  `;
+  list.appendChild(div);
+  skillEntries.push(id);
+  updateCV();
+}
+
+function removeSkill(id) {
+  document.getElementById('skill-entry-' + id).remove();
+  const idx = skillEntries.indexOf(id); if(idx>-1) skillEntries.splice(idx,1);
+  updateCV();
+}
+
+function addLang() {
+  const id = ++langCount;
+  const list = document.getElementById('lang-list');
+  const div = document.createElement('div');
+  div.className = 'entry-block skill-row';
+  div.id = 'lang-entry-' + id;
+  const lvls = LABELS[lang].langLevels;
+  div.innerHTML = `
+    <input placeholder="${lang==='fr'?'Arabe':'Arabic'}" oninput="updateCV()" data-field="lang-name-${id}" style="flex:1"/>
+    <select oninput="updateCV()" data-field="lang-level-${id}" style="width:130px">
+      ${lvls.map(l=>`<option>${l}</option>`).join('')}
+    </select>
+    <button class="remove-btn" style="position:static;margin-left:2px;" onclick="removeLang(${id})">×</button>
+  `;
+  list.appendChild(div);
+  langEntries.push(id);
+  updateCV();
+}
+
+function removeLang(id) {
+  document.getElementById('lang-entry-' + id).remove();
+  const idx = langEntries.indexOf(id); if(idx>-1) langEntries.splice(idx,1);
+  updateCV();
+}
+
+// ── GET FIELD ──
+function gf(field) {
+  const el = document.querySelector(`[data-field="${field}"]`);
+  return el ? el.value.trim() : '';
+}
+
+// ── UPDATE CV ──
+function updateCV() {
+  const L = LABELS[lang];
+  const first = document.getElementById('f-firstname').value.trim() || 'Prénom';
+  const last = document.getElementById('f-lastname').value.trim() || 'Nom';
+  const title = document.getElementById('f-title').value.trim();
+  const email = document.getElementById('f-email').value.trim();
+  const phone = document.getElementById('f-phone').value.trim();
+  const city = document.getElementById('f-city').value.trim();
+  const link = document.getElementById('f-link').value.trim();
+  const summary = document.getElementById('f-summary').value.trim();
+  const interests = document.getElementById('f-interests').value.trim();
+
+  // Avatar
+  const initials = (first[0]||'') + (last[0]||'');
+  document.getElementById('cv-avatar').textContent = initials.toUpperCase() || '?';
+  document.getElementById('cv-name').textContent = first + ' ' + last;
+  document.getElementById('cv-job-title').textContent = title;
+
+  // Labels
+  document.getElementById('lbl-profile').textContent = L.profile;
+  document.getElementById('lbl-skills').textContent = L.skills;
+  document.getElementById('lbl-langs').textContent = L.langs;
+  document.getElementById('lbl-exp').textContent = L.exp;
+  document.getElementById('lbl-edu').textContent = L.edu;
+  document.getElementById('lbl-interests').textContent = L.interests;
+
+  // Contacts
+  const contacts = [];
+  if(email) contacts.push(`<span>✉</span> ${email}`);
+  if(phone) contacts.push(`<span>✆</span> ${phone}`);
+  if(city) contacts.push(`<span>⌖</span> ${city}`);
+  if(link) contacts.push(`<span>⬡</span> ${link}`);
+  document.getElementById('cv-contacts').innerHTML = contacts.map(c=>`<div class="cv-contact-item">${c}</div>`).join('');
+
+  // Summary
+  document.getElementById('cv-summary').textContent = summary || (lang==='fr'?'Votre profil apparaîtra ici...':'Your profile will appear here...');
+
+  // Experience
+  const expHtml = expEntries.map(id => {
+    const t = gf(`exp-title-${id}`), s = gf(`exp-sub-${id}`), st = gf(`exp-start-${id}`), en = gf(`exp-end-${id}`), d = gf(`exp-desc-${id}`);
+    if(!t && !s) return '';
+    const date = [st, en].filter(Boolean).join(' – ');
+    return `<div class="cv-entry">
+      <div class="cv-entry-header">
+        <div class="cv-entry-title">${t||'—'}</div>
+        ${date?`<div class="cv-entry-date">${date}</div>`:''}
+      </div>
+      ${s?`<div class="cv-entry-sub">${s}</div>`:''}
+      ${d?`<div class="cv-entry-desc">${d}</div>`:''}
+    </div>`;
+  }).join('');
+  document.getElementById('cv-exp-list').innerHTML = expHtml || `<p class="empty-hint">${lang==='fr'?'Ajoutez vos expériences...':'Add your experiences...'}</p>`;
+
+  // Education
+  const eduHtml = eduEntries.map(id => {
+    const t = gf(`edu-title-${id}`), s = gf(`edu-sub-${id}`), st = gf(`edu-start-${id}`), en = gf(`edu-end-${id}`), d = gf(`edu-desc-${id}`);
+    if(!t && !s) return '';
+    const date = [st, en].filter(Boolean).join(' – ');
+    return `<div class="cv-entry">
+      <div class="cv-entry-header">
+        <div class="cv-entry-title">${t||'—'}</div>
+        ${date?`<div class="cv-entry-date">${date}</div>`:''}
+      </div>
+      ${s?`<div class="cv-entry-sub">${s}</div>`:''}
+      ${d?`<div class="cv-entry-desc">${d}</div>`:''}
+    </div>`;
+  }).join('');
+  document.getElementById('cv-edu-list').innerHTML = eduHtml || `<p class="empty-hint">${lang==='fr'?'Ajoutez votre formation...':'Add your education...'}</p>`;
+
+  // Skills
+  const skillsHtml = skillEntries.map(id => {
+    const name = gf(`skill-name-${id}`);
+    const level = document.querySelector(`[data-field="skill-level-${id}"]`)?.value || '60';
+    if(!name) return '';
+    return `<div class="cv-skill-item">
+      <div class="cv-skill-name">${name}</div>
+      <div class="cv-skill-bar"><div class="cv-skill-fill" style="width:${level}%"></div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('cv-skills-list').innerHTML = skillsHtml || `<p class="empty-hint">${lang==='fr'?'Ajoutez vos compétences...':'Add your skills...'}</p>`;
+
+  // Languages
+  const langsHtml = langEntries.map(id => {
+    const name = gf(`lang-name-${id}`);
+    const level = document.querySelector(`[data-field="lang-level-${id}"]`)?.value || '';
+    if(!name) return '';
+    return `<div class="cv-lang-item"><span class="cv-lang-name">${name}</span><span class="cv-lang-level">${level}</span></div>`;
+  }).join('');
+  document.getElementById('cv-langs-list').innerHTML = langsHtml || `<p class="empty-hint">${lang==='fr'?'Ajoutez des langues...':'Add languages...'}</p>`;
+
+  // Interests
+  const interestArr = interests ? interests.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const section = document.getElementById('cv-interests-section');
+  section.style.display = interestArr.length ? '' : 'none';
+  document.getElementById('cv-interests-list').innerHTML = interestArr.map(i=>`<span class="cv-interest-tag">${i}</span>`).join('');
+}
+
+// ── DOWNLOAD PDF ──
+function downloadPDF() {
+  const el = document.getElementById('cv-document');
+  const first = document.getElementById('f-firstname').value.trim() || 'CV';
+  const last = document.getElementById('f-lastname').value.trim() || '';
+  const filename = `CV_${first}_${last}.pdf`.replace(/\s+/g, '_');
+  const opt = {
+    margin: 0,
+    filename,
+    image: { type: 'jpeg', quality: 0.98 },
+    html2canvas: { scale: 2, useCORS: true },
+    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+  };
+  html2pdf().set(opt).from(el).save();
+}
+
+// ── RESET ──
+function resetForm() {
+  if(!confirm(lang==='fr'?'Réinitialiser le formulaire ?':'Reset the form?')) return;
+  ['f-firstname','f-lastname','f-title','f-email','f-phone','f-city','f-link','f-summary','f-interests'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  ['exp','edu','skill','lang'].forEach(t => {
+    document.getElementById(t+'-list').innerHTML = '';
+  });
+  expEntries=[]; eduEntries=[]; skillEntries=[]; langEntries=[];
+  updateCV();
+}
+
+// ── INIT ──
+updateCV();
+</script>
+</body>
+</html>
